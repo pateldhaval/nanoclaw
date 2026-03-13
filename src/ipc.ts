@@ -82,13 +82,17 @@ export function startIpcWatcher(deps: IpcDeps): void {
                   (targetGroup && targetGroup.folder === sourceGroup)
                 ) {
                   // Route through bot pool if sender specified and Telegram channel
+                  // Fall back to regular sendMessage if pool is not configured
                   if (data.sender && data.chatJid.startsWith('tg:')) {
-                    await sendPoolMessage(
+                    const sent = await sendPoolMessage(
                       data.chatJid,
                       data.text,
                       data.sender,
                       sourceGroup,
                     );
+                    if (!sent) {
+                      await deps.sendMessage(data.chatJid, data.text);
+                    }
                   } else {
                     await deps.sendMessage(data.chatJid, data.text);
                   }
