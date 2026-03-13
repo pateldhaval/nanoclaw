@@ -18,6 +18,7 @@ import {
 } from './config.js';
 import { resolveGroupFolderPath, resolveGroupIpcPath } from './group-folder.js';
 import { logger } from './logger.js';
+import { readEnvFile } from './env.js';
 import {
   CONTAINER_HOST_GATEWAY,
   CONTAINER_RUNTIME_BIN,
@@ -222,20 +223,22 @@ function buildContainerArgs(
   args.push('-e', `TZ=${TIMEZONE}`);
 
   // Route API traffic through the credential proxy (containers never see real secrets)
-  args.push(
-    '-e',
-    `ANTHROPIC_BASE_URL=http://${CONTAINER_HOST_GATEWAY}:${CREDENTIAL_PROXY_PORT}`,
-  );
-
-  // Mirror the host's auth method with a placeholder value.
-  // API key mode: SDK sends x-api-key, proxy replaces with real key.
-  // OAuth mode:   SDK exchanges placeholder token for temp API key,
-  //               proxy injects real OAuth token on that exchange request.
-  const authMode = detectAuthMode();
-  if (authMode === 'api-key') {
-    args.push('-e', 'ANTHROPIC_API_KEY=placeholder');
-  } else {
-    args.push('-e', 'CLAUDE_CODE_OAUTH_TOKEN=placeholder');
+  // Pass API credentials directly to container (proxy not reachable from container)
+  const secrets = readEnvFile([
+    'ANTHROPIC_API_KEY',
+    'ANTHROPIC_BASE_URL',
+    'CLAUDE_CODE_OAUTH_TOKEN',
+  ]);
+  if (secrets.ANTHROPIC_API_KEY) {
+    args.push('-e', `ANTHROPIC_API_KEY=${secrets.ANTHROPIC_API_KEY}`);
+    if (secrets.ANTHROPIC_BASE_URL) {
+      args.push('-e', `ANTHROPIC_BASE_URL=${secrets.ANTHROPIC_BASE_URL}`);
+    }
+  } else if (secrets.CLAUDE_CODE_OAUTH_TOKEN) {
+    args.push(
+      '-e',
+      `CLAUDE_CODE_OAUTH_TOKEN=${secrets.CLAUDE_CODE_OAUTH_TOKEN}`,
+    );
   }
 
   // Runtime-specific args for host gateway resolution
