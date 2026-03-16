@@ -645,6 +645,61 @@ export async function runContainerAgent(
   });
 }
 
+export interface SubagentInput {
+  role: string;
+  task: string;
+  prompt?: string;
+  chatJid: string;
+}
+
+/**
+ * Spawn a subagent container with full tool access.
+ * The subagent runs in its own container but shares the filesystem with the main agent.
+ */
+export async function spawnSubagentContainer(
+  group: RegisteredGroup,
+  subagentInput: SubagentInput,
+): Promise<void> {
+  // Build subagent-specific prompt
+  const defaultPrompt = `You are ${subagentInput.role}.
+
+${subagentInput.task}
+
+When you have results or updates, send them to the group using mcp__nanoclaw__send_message with sender="${subagentInput.role}".
+
+CRITICAL: You have full tool access. Use WebSearch, Bash, Read, Write, and other tools to complete your task. Report your findings clearly.`;
+
+  const subagentPrompt = subagentInput.prompt || defaultPrompt;
+
+  // Create a minimal callback - we don't need to track subagent output in the same way
+  const onProcess = (_proc: ChildProcess, _containerName: string) => {
+    logger.info(
+      { role: subagentInput.role, group: group.name },
+      'Subagent container started',
+    );
+  };
+
+  // Run the container with the subagent prompt
+  await runContainerAgent(
+    group,
+    {
+      prompt: subagentPrompt,
+      sessionId: `subagent-${subagentInput.role}-${Date.now()}`,
+      groupFolder: group.folder,
+      chatJid: subagentInput.chatJid,
+      isMain: false,
+      isScheduledTask: false,
+      assistantName: subagentInput.role,
+    },
+    onProcess,
+  );
+
+  logger.info(
+    { role: subagentInput.role, group: group.name },
+    'Subagent container completed',
+  );
+}
+
 export function writeTasksSnapshot(
   groupFolder: string,
   isMain: boolean,

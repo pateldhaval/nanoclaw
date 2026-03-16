@@ -4,7 +4,7 @@ import path from 'path';
 import { CronExpressionParser } from 'cron-parser';
 
 import { DATA_DIR, IPC_POLL_INTERVAL, TIMEZONE } from './config.js';
-import { AvailableGroup } from './container-runner.js';
+import { AvailableGroup, spawnSubagentContainer } from './container-runner.js';
 import { createTask, deleteTask, getTaskById, updateTask } from './db.js';
 import { isValidGroupFolder } from './group-folder.js';
 import { logger } from './logger.js';
@@ -63,6 +63,7 @@ export function startIpcWatcher(deps: IpcDeps): void {
       const isMain = folderIsMain.get(sourceGroup) === true;
       const messagesDir = path.join(ipcBaseDir, sourceGroup, 'messages');
       const tasksDir = path.join(ipcBaseDir, sourceGroup, 'tasks');
+      const subagentsDir = path.join(ipcBaseDir, sourceGroup, 'subagents');
 
       // Process messages from this group's IPC directory
       try {
@@ -158,6 +159,57 @@ export function startIpcWatcher(deps: IpcDeps): void {
         }
       } catch (err) {
         logger.error({ err, sourceGroup }, 'Error reading IPC tasks directory');
+      }
+
+      // Process subagent spawn requests
+      try {
+        if (fs.existsSync(subagentsDir)) {
+          const subagentFiles = fs
+            .readdirSync(subagentsDir)
+            .filter((f) => f.endsWith('.json'));
+          for (const file of subagentFiles) {
+            const filePath = path.join(subagentsDir, file);
+            try {
+              const data = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+              // Handle spawn_subagent - this spawns a new container for the subagent
+              if (data.type === 'spawn_subagent' && data.role && data.task && data.chatJid) {
+                const group = registeredGroups[data.chatJid] || registeredGroups[`tg:${data.chatJid.replace('tg:', '')}`];
+
+                if (group) {
+                  await spawnSubagentContainer(group, {
+                    role: data.role,
+                    task: data.task,
+                    prompt: data.prompt,
+                    chatJid: data.chatJid,
+                  });
+                  logger.info(
+                    { role: data.role, task: data.task, chatJid: data.chatJid },
+                    'Subagent container spawned',
+                  );
+                } else {
+                  logger.warn(
+                    { chatJid: data.chatJid },
+                    'Cannot spawn subagent: group not found',
+                  );
+                }
+              }
+              fs.unlinkSync(filePath);
+            } catch (err) {
+              logger.error(
+                { file, sourceGroup, err },
+                'Error processing subagent spawn request',
+              );
+              const errorDir = path.join(ipcBaseDir, 'errors');
+              fs.mkdirSync(errorDir, { recursive: true });
+              fs.renameSync(
+                filePath,
+                path.join(errorDir, `${sourceGroup}-subagent-${file}`),
+              );
+            }
+          }
+        }
+      } catch (err) {
+        logger.error({ err, sourceGroup }, 'Error reading IPC subagents directory');
       }
     }
 

@@ -14,6 +14,7 @@ import { CronExpressionParser } from 'cron-parser';
 const IPC_DIR = '/workspace/ipc';
 const MESSAGES_DIR = path.join(IPC_DIR, 'messages');
 const TASKS_DIR = path.join(IPC_DIR, 'tasks');
+const SUBAGENTS_DIR = path.join(IPC_DIR, 'subagents');
 
 // Context from environment variables (set by the agent runner)
 const chatJid = process.env.NANOCLAW_CHAT_JID!;
@@ -59,6 +60,41 @@ server.tool(
     writeIpcFile(MESSAGES_DIR, data);
 
     return { content: [{ type: 'text' as const, text: 'Message sent.' }] };
+  },
+);
+
+server.tool(
+  'spawn_subagent',
+  `Spawn a subagent in its own container with full tool access. Use this when you need a subagent that has its own Claude Code instance with all tools available (WebSearch, Bash, file tools, etc.).
+
+The subagent runs in a separate container but shares the filesystem with you at /workspace/group, so you can collaborate on files.
+
+When the subagent completes its task, it will send a message to the group using send_message.
+
+Example usage:
+- "Spawn a Researcher subagent to find latest AI news"
+- "Create a Coder subagent to write a hello world program"`,
+  {
+    role: z.string().describe('The role/name for the subagent (e.g., "Researcher", "Coder", "Analyzer")'),
+    task: z.string().describe('What the subagent should do'),
+    prompt: z.string().optional().describe('Optional custom prompt. If not provided, a default prompt will be used.'),
+  },
+  async (args) => {
+    const data = {
+      type: 'spawn_subagent',
+      role: args.role,
+      task: args.task,
+      prompt: args.prompt,
+      chatJid,
+      groupFolder,
+      timestamp: new Date().toISOString(),
+    };
+
+    writeIpcFile(SUBAGENTS_DIR, data);
+
+    return {
+      content: [{ type: 'text' as const, text: `Spawning subagent "${args.role}" with task: ${args.task}` }],
+    };
   },
 );
 
