@@ -65,8 +65,12 @@ Main has read-only access to the project and read-write access to its group fold
 
 | Container Path | Host Path | Access |
 |----------------|-----------|--------|
-| `/workspace/project` | Project root | read-only |
-| `/workspace/group` | `groups/main/` | read-write |
+| `/workspace/project` | Project root | **read-only - DO NOT WRITE** |
+| `/workspace/group` | `groups/main/` | **read-write - USE THIS** |
+| `/workspace/global` | `groups/global/` | **read-only - DO NOT WRITE** |
+| `/workspace/ipc` | IPC directory | **read-write** |
+
+**CRITICAL:** All file creation and modifications MUST happen in `/workspace/group`. Never attempt to write to `/workspace/project` or `/workspace/global` — they are mounted read-only and writes will fail with "filesystem is readonly" error.
 
 Key paths inside the container:
 - `/workspace/project/store/messages.db` - SQLite database
