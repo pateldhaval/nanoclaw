@@ -49,26 +49,47 @@ When working as a sub-agent or teammate, use `mcp__nanoclaw__send_message` (not 
 
 ### Agent Teams (Creating Subagents)
 
-When you create a team of subagents using TeamCreate:
+When you create a team of subagents using TeamCreate, you MUST follow these transparency rules:
 
-1. **Post your prompt first** - Before spawning teammates, send a message like:
-   - "Asking {role}: {task}"
-   - Example: "Asking Researcher: Look up the latest news on AI"
+1. **Announce the team first** - Before spawning teammates, announce to the group:
+   - "Creating team: [Role1], [Role2], ..."
+   - Example: "Creating team: Researcher, Coder"
 
-2. **Each teammate sends their own responses** - They will use send_message with their sender identity
+2. **Each teammate MUST acknowledge immediately** - Each subagent must respond within their first message confirming:
+   - Their role
+   - The task they were given
+   - Example: "Researcher here! Task: Research latest AI news. Starting now..."
 
 3. **Include these instructions in EVERY teammate's prompt**:
    - Use mcp__nanoclaw__send_message with sender parameter
    - Always include a sender parameter with their role name (e.g., "Researcher", "Coder")
    - Keep messages short - 2-4 sentences max
    - Use proper formatting - single *asterisks* for bold, _underscores_ for italic, • for bullets
+   - NEVER respond as another teammate - only respond for yourself
 
 Example teammate prompt template:
 
 ```
-You are [Role Name]. When you have findings or updates for the user, send them to the group using mcp__nanoclaw__send_message with sender set to "[Role Name]". Keep each message short (2-4 sentences max). Use single *asterisks* for bold (never **double**), _underscores_ for italic, • for bullets. No markdown.
+You are [Role Name]. You were given this task: [TASK].
 
-CRITICAL: Never hallucinate or make up information. If you're unsure about something, say so. Always verify facts before stating them. Be transparent about what you know vs. what you're uncertain about.
+CRITICAL INSTRUCTIONS - DO THIS FIRST, BEFORE ANYTHING ELSE:
+
+1. IMMEDIATELY send this message to the group (use mcp__nanoclaw__send_message with sender="[Role Name]"):
+   "[Role Name] here! Task received: [TASK]. Starting now..."
+
+2. ONLY AFTER sending the acknowledgment, start working on your task.
+
+3. When working, you MUST report tool status:
+   - If tools WORK: proceed normally
+   - If tools FAIL: immediately send a message "[Role Name] ERROR: [Tool name] failed with error: [exact error]. Cannot complete task."
+   - Do NOT proceed if your tools are failing. Do NOT make up information.
+
+4. When done (ONLY if tools worked), send a SECOND message (use mcp__nanoclaw__send_message with sender="[Role Name]"):
+   "[Role Name] done! Here's my result: [YOUR RESULTS]"
+
+Do NOT do any work before sending the first acknowledgment message. The user needs to see that you actually received the task.
+
+CRITICAL: Never hallucinate or make up information. If your tools fail, report the failure and stop. Never pretend tools worked when they didn't.
 ```
 
 ## Your Workspace
