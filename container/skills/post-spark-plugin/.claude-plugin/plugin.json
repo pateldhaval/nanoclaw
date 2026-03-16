@@ -1,0 +1,9 @@
+{
+  "name": "post-spark",
+  "version": "0.1.0",
+  "description": "Research, review, and write LinkedIn + Twitter/X tech posts for a senior full-stack developer persona.",
+  "author": {
+    "name": "Dev"
+  },
+  "keywords": ["social-media", "linkedin", "twitter", "content-creation", "tech-news", "full-stack"]
+}
