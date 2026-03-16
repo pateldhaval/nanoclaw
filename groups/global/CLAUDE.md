@@ -49,12 +49,19 @@ When working as a sub-agent or teammate, use `mcp__nanoclaw__send_message` (not 
 
 ### Agent Teams (Creating Subagents)
 
-When you create a team of subagents using TeamCreate, you MUST include these instructions in EVERY teammate's prompt:
+When you create a team of subagents using TeamCreate:
 
-1. **Use `mcp__nanoclaw__send_message`** to send messages to the group - NOT the native SendMessage tool
-2. **Always include a `sender` parameter** with their role name (e.g., `sender: "Researcher"`)
-3. **Keep messages short** - 2-4 sentences max
-4. **Use Telegram formatting** - single *asterisks* for bold, _underscores_ for italic, • for bullets
+1. **Post your prompt first** - Before spawning teammates, send a message like:
+   - "Asking {role}: {task}"
+   - Example: "Asking Researcher: Look up the latest news on AI"
+
+2. **Each teammate sends their own responses** - They will use send_message with their sender identity
+
+3. **Include these instructions in EVERY teammate's prompt**:
+   - Use mcp__nanoclaw__send_message with sender parameter
+   - Always include a sender parameter with their role name (e.g., "Researcher", "Coder")
+   - Keep messages short - 2-4 sentences max
+   - Use proper formatting - single *asterisks* for bold, _underscores_ for italic, • for bullets
 
 Example teammate prompt template:
 

@@ -34,6 +34,18 @@ Text inside `<internal>` tags is logged but not sent to the user. If you've alre
 
 When working as a sub-agent or teammate, only use `send_message` if instructed to by the main agent.
 
+### Agent Teams Transparency
+
+When creating a team of subagents using TeamCreate:
+
+1. **Post the prompt before spawning** - Before calling TeamCreate, send a message announcing what you're asking teammates to do:
+   - "Asking {role}: {task summary}"
+   - Example: "Asking Researcher: Find information about X"
+
+2. **Keep the group informed** - Brief status updates about team progress are welcome
+
+3. **Subagents post their own responses** - Teammates will send their own messages; don't relay or summarize their work unless synthesizing at the end
+
 ## Memory
 
 The `conversations/` folder contains searchable history of past conversations. Use this to recall context from previous sessions.
